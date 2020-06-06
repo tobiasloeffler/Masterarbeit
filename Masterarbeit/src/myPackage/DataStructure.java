@@ -8,23 +8,29 @@ import java.sql.Statement;
 import java.sql.ResultSet;
 
 public class DataStructure {
+	
 	static Query query;
 	static MyList startList;
 	static QTree qTree;
-	static Object[] itemStorage;
+	static HashMap<String,Item>[] itemStorage;
 	
 	public static double[][] copyMatrix(double[][] src) {
+		
 		double[][] dest = new double[src.length][src.length];
+		
 		for (int i=0; i<dest.length; i++) {
 			for (int j=0; j<dest.length; j++) {
 				dest[i][j] = src[i][j];
 			}
 		}
+		
 		return dest;
 	}
 	
 	public static void printMatrix(String name, double[][] matrix) {
+		
 		System.out.println("\n" + name + ":");
+		
 		for (int k=0; k<matrix[0].length; k++) {
 			for (int l=0; l<matrix[0].length; l++) {
 				System.out.print(matrix[k][l] + "  ");
@@ -33,8 +39,9 @@ public class DataStructure {
 		}
 	}
 	
-	//mode = true -> insert
+	//mode: true = insert, false = delete
 	public static void update(boolean mode, String relation, double[] constants) {
+		
 		boolean compatible = true;
 		
 		for (int i=0; i<query.atoms.length; i++) {
@@ -67,6 +74,7 @@ public class DataStructure {
 			}
 			
 			//create items
+			
 			String valuation = "";
 			Set<Integer> vars = new HashSet<Integer>();
 			
@@ -82,15 +90,15 @@ public class DataStructure {
 				double cons = constants[map.get((Integer) var)];
 				
 				valuation = valuation + "/" + Double.toString(cons);
-				if (((HashMap<String, Item>) itemStorage[var]).containsKey(valuation)) {
-					items[j] = ((HashMap<String, Item>) itemStorage[var]).get(valuation);
+				if (itemStorage[var].containsKey(valuation)) {
+					items[j] = (itemStorage[var]).get(valuation);
 				} else {
 					if (j > 0) {
 						items[j] = new Item(var, cons, valuation, items[j-1]);
 					} else {
 						items[j] = new Item(var, cons, valuation, null);
 					}
-					((HashMap<String, Item>) itemStorage[var]).put(valuation, items[j]);
+					(itemStorage[var]).put(valuation, items[j]);
 				}
 			}
 			
@@ -123,8 +131,6 @@ public class DataStructure {
 				
 				items[j].weight *= weightRep;
 				
-				//printMatrix("matrix_old", matrix_old);
-				
 				if (items[j].children != null) {
 					for (int k=0; k<items[j].children.length; k++) {
 						items[j].weight *= items[j].children[k].weight;
@@ -135,8 +141,6 @@ public class DataStructure {
 						}
 					}
 				}
-				
-				//printMatrix("items[j].matrix", items[j].matrix);
 				
 				//2.a)
 				int weightFree_old = 0;
@@ -231,16 +235,12 @@ public class DataStructure {
 				list.weight -= weight_old;
 				list.weight += items[j].weight;
 				
-				//printMatrix("list.matrix vor dem Update", list.matrix);
-				
 				for (int k=0; k<query.mFree; k++) {
 					for (int l=0; l<query.mFree; l++) {
 						list.matrix[k][l] -= matrix_old[k][l];
 						list.matrix[k][l] += items[j].matrix[k][l];
 					}
 				}
-				
-				//printMatrix("list.matrix nach dem Update", list.matrix);
 				
 				//4.a)
 				if (query.isFree(items[j].var)) {
@@ -265,7 +265,7 @@ public class DataStructure {
 						}
 					}
 					if (delete) {
-						((HashMap<String, Item>) itemStorage[var]).remove(items[j].valuation);
+						itemStorage[var].remove(items[j].valuation);
 					}
 				}
 			}
@@ -273,10 +273,13 @@ public class DataStructure {
 	}
 	
 	public static void main(String[] args) {
+		
 		Atom[] atoms = new Atom[3];
+		
 		int[] arr1 = {0,1,2};
 		int[] arr2 = {0,1,2,3};
 		int[] arr3 = {0,1,4};
+		
 		atoms[0] = new Atom("R1", arr1);
 		atoms[1] = new Atom("R2", arr2);
 		atoms[2] = new Atom("R3", arr3);
@@ -288,10 +291,12 @@ public class DataStructure {
 							 "AND R1.x1 = R2.x1 " + 
 							 "AND R2.x1 = R3.x1 " + 
 							 "AND R1.x2 = R2.x2;";
+		
 		query = new Query(5, atoms, queryString);
 		qTree = new QTree();
 		startList = new MyList(qTree.root.var);
-		itemStorage = new Object[query.mFree];
+		itemStorage = (HashMap<String,Item>[]) new Map[query.mFree];
+		
 		for (int i=0; i<query.mFree; i++) {
 			itemStorage[i] = new HashMap<String, Item>();
 		}
@@ -300,10 +305,8 @@ public class DataStructure {
 		String user = "tobi";
 		String password = "password";
 		
-		Connection conn = null;
-		
-		try {
-			conn = DriverManager.getConnection(url, user, password);
+		try (Connection conn = DriverManager.getConnection(url, user, password)) {
+			
 			System.out.println("Connection successful\n");
 			
 			Statement statement = conn.createStatement();
@@ -315,6 +318,7 @@ public class DataStructure {
 			
 			result = statement.executeQuery("SELECT * FROM R1;");
 			double[] cons1 = new double[3];
+			
 			while (result.next()) {
 				for (int i=0; i<3; i++) {
 					cons1[i] = result.getDouble(i+1);
@@ -326,11 +330,11 @@ public class DataStructure {
 			
 			result = statement.executeQuery("SELECT * FROM R2;");
 			double[] cons2 = new double[4];
+			
 			while (result.next()) {
 				for (int i=0; i<4; i++) {
 					cons2[i] = result.getDouble(i+1);
 				}
-				
 				update(true, "R2", cons2);
 			}
 			
@@ -338,6 +342,7 @@ public class DataStructure {
 			
 			result = statement.executeQuery("SELECT * FROM R3;");
 			double[] cons3 = new double[3];
+			
 			while (result.next()) {
 				for (int i=0; i<3; i++) {
 					cons3[i] = result.getDouble(i+1);
@@ -347,7 +352,6 @@ public class DataStructure {
 			
 			System.out.println("All tuples from R3 succesfully inserted.\n");
 			
-			conn.close();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
