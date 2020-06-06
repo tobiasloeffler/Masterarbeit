@@ -274,14 +274,14 @@ public class DataStructure {
 	
 	public static int parseQuery(String[] cq) {
 		
-		Set<String> freeVars;
+		SortedSet<String> freeVars;
 		String freeTuple;
 		String[] freeVarsArray;
 		
 		if (cq[0].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
 			freeTuple = cq[0].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
 			freeVarsArray = freeTuple.split(",");
-			freeVars = new HashSet<>(Arrays.asList(freeVarsArray));
+			freeVars = new TreeSet<>(Arrays.asList(freeVarsArray));
 		} else {
 			System.err.println("Invalid query format");
 			return -1;
@@ -321,22 +321,25 @@ public class DataStructure {
 		
 		String sql;
 		
-		if ((sql = convertCqToSql(freeVarsArray, relationSet, varsInRelations)) != null) {
-			query = new Query(freeVars.size(), atoms, sql);
+		if ((sql = convertCqToSql(freeVars, relationSet, varsInRelations)) != null) {
+			query = new Query(freeVars.size(), atoms, sql, freeVars);
 			return 0;
 		} else {
 			return -1;
 		}
 	}
 	
-	public static String convertCqToSql(String[] freeVars, Set<String> relations, Map<String,Set<String>> varsInRelations) {
+	public static String convertCqToSql(SortedSet<String> freeVars, Set<String> relations, Map<String,Set<String>> varsInRelations) {
 		
 		StringBuilder builder = new StringBuilder().append("SELECT ");
 		
-		for (int i=0; i<freeVars.length; i++) {
-			String r = varsInRelations.get(freeVars[i]).iterator().next();
-			builder.append(r + "." + freeVars[i]);
-			if (i<freeVars.length-1) {
+		Iterator<String> itFree = freeVars.iterator();
+		
+		while (itFree.hasNext()) {
+			String v = itFree.next();
+			String r = varsInRelations.get(v).iterator().next();
+			builder.append(r + "." + v);
+			if (itFree.hasNext()) {
 				builder.append(", ");
 			}
 		}

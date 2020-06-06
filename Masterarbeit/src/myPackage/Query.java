@@ -1,28 +1,22 @@
 package myPackage;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.SortedSet;
 
 public class Query {
 	int mFree;
 	Atom[] atoms;
 	String queryString;
-	Set<Integer> free;
+	SortedSet<String> free;
 	
-	public Query(int mFree, Atom[] atoms, String queryString) {
+	public Query(int mFree, Atom[] atoms, String queryString, SortedSet<String> free) {
 		this.mFree = mFree;
 		this.atoms = atoms;
 		this.queryString = queryString;
-		this.free = new HashSet<Integer>();
-		
-		this.free.add((Integer) 0);
-		this.free.add((Integer) 1);
-		this.free.add((Integer) 2);
-		this.free.add((Integer) 4);
+		this.free = free;
 	}
 	
-	public boolean isFree(int var) {
-		if (this.free.contains((Integer) var)) {
+	public boolean isFree(String var) {
+		if (this.free.contains(var)) {
 			return true;
 		}
 		return false;
