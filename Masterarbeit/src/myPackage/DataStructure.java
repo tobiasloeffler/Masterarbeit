@@ -276,10 +276,11 @@ public class DataStructure {
 		
 		Set<String> freeVars;
 		String freeTuple;
+		String[] freeVarsArray;
 		
 		if (cq[0].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
 			freeTuple = cq[0].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
-			String[] freeVarsArray = freeTuple.split(",");
+			freeVarsArray = freeTuple.split(",");
 			freeVars = new HashSet<>(Arrays.asList(freeVarsArray));
 		} else {
 			System.err.println("Invalid query format");
@@ -292,14 +293,26 @@ public class DataStructure {
 		}
 		
 		Atom[] atoms = new Atom[cq.length-2];
+		Set<String> relationSet = new HashSet<>();
+		Map<String,Set<String>> varsInRelations = new HashMap<>();
 		
 		for (int i=2; i<cq.length; i++) {
 			if (cq[i].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
-				String relation = cq[i].substring(0,cq[0].indexOf('('));
-				String tuple = cq[i].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
+				String relation = cq[i].substring(0,cq[0].indexOf('(')-1);
+				relationSet.add(relation);
+				
+				String tuple = cq[i].substring(cq[i].indexOf('(')+1,cq[i].length()-1);
 				String[] varsArray = tuple.split(",");
 				Set<String> vars = new HashSet<>(Arrays.asList(varsArray));
+				
 				atoms[i-2] = new Atom(relation, vars);
+				
+				for (String v : vars) {
+					if (!varsInRelations.containsKey(v)) {
+						varsInRelations.put(v, new HashSet<String>());
+					}
+					varsInRelations.get(v).add(relation);
+				}
 			} else {
 				System.err.println("Invalid query format");
 				return -1;
@@ -308,7 +321,7 @@ public class DataStructure {
 		
 		String sql;
 		
-		if ((sql = convertCqToSql(freeTuple, atoms)) != null) {
+		if ((sql = convertCqToSql(freeVarsArray, relationSet, varsInRelations)) != null) {
 			query = new Query(freeVars.size(), atoms, sql);
 			return 0;
 		} else {
@@ -316,43 +329,57 @@ public class DataStructure {
 		}
 	}
 	
-	public static String convertCqToSql(String freeTuple, Atom[] atoms) {
+	public static String convertCqToSql(String[] freeVars, Set<String> relations, Map<String,Set<String>> varsInRelations) {
 		
 		StringBuilder builder = new StringBuilder().append("SELECT ");
-		builder.append(freeTuple);
-		builder.append(" FROM ");
 		
-		for (int i=0; i<atoms.length; i++) {
-			builder.append(atoms[i].relation);
-			if (i < atoms.length-1) {
+		for (int i=0; i<freeVars.length; i++) {
+			String r = varsInRelations.get(freeVars[i]).iterator().next();
+			builder.append(r + "." + freeVars[i]);
+			if (i<freeVars.length-1) {
 				builder.append(", ");
 			}
 		}
 		
-		return null;
+		builder.append(" FROM ");
+		builder.append(String.join(", ", relations));
+		
+		boolean where = false;
+		Iterator<String> itKeySet = varsInRelations.keySet().iterator();
+		
+		while (itKeySet.hasNext()) {
+			String v = itKeySet.next();
+			Iterator<String> itRelations = varsInRelations.get(v).iterator();
+			String first = itRelations.next();
+			
+			while (itRelations.hasNext()) {
+				if (where) {
+					builder.append(" AND ");
+				} else {
+					builder.append(" WHERE ");
+					where = true;
+				}
+				builder.append(first + "." + v + " = " + itRelations.next() + "." + v);
+			}
+			
+			if (!itKeySet.hasNext()) {
+				builder.append(";");
+			}
+		}
+		
+		return builder.toString();
+	}
+	
+	public static void generateQTree() {
+		
 	}
 	
 	public static void main(String[] args) {
 		
-		Atom[] atoms = new Atom[3];
+		if (parseQuery(args) == -1) {
+			System.exit(1);
+		}
 		
-		int[] arr1 = {0,1,2};
-		int[] arr2 = {0,1,2,3};
-		int[] arr3 = {0,1,4};
-		
-		atoms[0] = new Atom("R1", arr1);
-		atoms[1] = new Atom("R2", arr2);
-		atoms[2] = new Atom("R3", arr3);
-		
-		String queryString = "SELECT R1.x0, R1.x1, R1.x2, R2.x3, R3.y " +
-							 "FROM R1, R2, R3 " + 
-							 "WHERE R1.x0 = R2.x0 " +
-							 "AND R2.x0 = R3.x0 " + 
-							 "AND R1.x1 = R2.x1 " + 
-							 "AND R2.x1 = R3.x1 " + 
-							 "AND R1.x2 = R2.x2;";
-		
-		query = new Query(5, atoms, queryString);
 		qTree = new QTree();
 		startList = new MyList(qTree.root.var);
 		itemStorage = (HashMap<String,Item>[]) new HashMap[query.mFree];
