@@ -12,7 +12,7 @@ public class DataStructure {
 	static Query query;
 	static MyList startList;
 	static QTree qTree;
-	static HashMap<String,Item>[] itemStorage;
+	static Map<String,Item>[] itemStorage;
 	
 	public static double[][] copyMatrix(double[][] src) {
 		
@@ -272,6 +272,66 @@ public class DataStructure {
 		}
 	}
 	
+	public static int parseQuery(String[] cq) {
+		
+		Set<String> freeVars;
+		String freeTuple;
+		
+		if (cq[0].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
+			freeTuple = cq[0].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
+			String[] freeVarsArray = freeTuple.split(",");
+			freeVars = new HashSet<>(Arrays.asList(freeVarsArray));
+		} else {
+			System.err.println("Invalid query format");
+			return -1;
+		}
+		
+		if (!cq[1].equals("=")) {
+			System.err.println("Invalid query format");
+			return -1;
+		}
+		
+		Atom[] atoms = new Atom[cq.length-2];
+		
+		for (int i=2; i<cq.length; i++) {
+			if (cq[i].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
+				String relation = cq[i].substring(0,cq[0].indexOf('('));
+				String tuple = cq[i].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
+				String[] varsArray = tuple.split(",");
+				Set<String> vars = new HashSet<>(Arrays.asList(varsArray));
+				atoms[i-2] = new Atom(relation, vars);
+			} else {
+				System.err.println("Invalid query format");
+				return -1;
+			}
+		}
+		
+		String sql;
+		
+		if ((sql = convertCqToSql(freeTuple, atoms)) != null) {
+			query = new Query(freeVars.size(), atoms, sql);
+			return 0;
+		} else {
+			return -1;
+		}
+	}
+	
+	public static String convertCqToSql(String freeTuple, Atom[] atoms) {
+		
+		StringBuilder builder = new StringBuilder().append("SELECT ");
+		builder.append(freeTuple);
+		builder.append(" FROM ");
+		
+		for (int i=0; i<atoms.length; i++) {
+			builder.append(atoms[i].relation);
+			if (i < atoms.length-1) {
+				builder.append(", ");
+			}
+		}
+		
+		return null;
+	}
+	
 	public static void main(String[] args) {
 		
 		Atom[] atoms = new Atom[3];
@@ -295,7 +355,7 @@ public class DataStructure {
 		query = new Query(5, atoms, queryString);
 		qTree = new QTree();
 		startList = new MyList(qTree.root.var);
-		itemStorage = (HashMap<String,Item>[]) new Map[query.mFree];
+		itemStorage = (HashMap<String,Item>[]) new HashMap[query.mFree];
 		
 		for (int i=0; i<query.mFree; i++) {
 			itemStorage[i] = new HashMap<String, Item>();
