@@ -72,8 +72,8 @@ public class QTree extends DataStructure {
 	public boolean inRep(Atom atom, int var) {
 		Set<Integer> vars = new HashSet<Integer>();
 		
-		for (int i=0; i<atom.vars.length; i++) {
-			vars.add((Integer) atom.vars[i]);
+		for (int i=0; i<atom.tuple.length; i++) {
+			vars.add((Integer) atom.tuple[i]);
 		}
 		
 		int[] path = qTree.getPath(qTree.root, vars, 1);

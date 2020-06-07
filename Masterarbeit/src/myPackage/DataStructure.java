@@ -42,32 +42,26 @@ public class DataStructure {
 	//mode: true = insert, false = delete
 	public static void update(boolean mode, String relation, double[] constants) {
 		
-		boolean compatible = true;
-		
+		outerloop:
 		for (int i=0; i<query.atoms.length; i++) {
 			Atom atom = query.atoms[i];
-			compatible = true;
-			HashMap<Integer, Integer> map = new HashMap<Integer, Integer>();
+			Map<Integer, Integer> map = new HashMap<>();
 			
-			if ((!relation.equals(atom.relation)) || (atom.vars.length != constants.length)) {
+			if ((!relation.equals(atom.relation)) || (atom.tuple.length != constants.length)) {
 				continue;
 			}
 			
-			for (int j=0; j<atom.vars.length; j++) {
-				if (map.containsKey((Integer) atom.vars[j])) {
-					if (constants[map.get(atom.vars[j])] != constants[j]) {
-						compatible = false;
+			for (int j=0; j<atom.tuple.length; j++) {
+				if (map.containsKey((Integer) atom.tuple[j])) {
+					if (constants[map.get(atom.tuple[j])] != constants[j]) {
+						continue outerloop;
 					}
 				} else {
-					map.put((Integer) atom.vars[j], (Integer) j);
+					map.put((Integer) atom.tuple[j], (Integer) j);
 				}
 			}
 			
-			if (!compatible) {
-				continue;
-			}
-			
-			if (atom.vars.length == 3) {
+			if (atom.tuple.length == 3) {															//needs to be redone
 				System.out.println("\nUpdate: " + relation + "(" + constants[0] + ", " + constants[1] + ", " + constants[2] + ")");
 			} else {
 				System.out.println("\nUpdate: " + relation + "(" + constants[0] + ", " + constants[1] + ", " + constants[2] + ", " + constants[3] + ")");
@@ -75,11 +69,11 @@ public class DataStructure {
 			
 			//create items
 			
-			String valuation = "";
-			Set<Integer> vars = new HashSet<Integer>();
+			String valuation = "";																	//replace with map?
+			Set<Integer> vars = new HashSet<>();
 			
-			for (int j=0; j<atom.vars.length; j++) {
-				vars.add((Integer) atom.vars[j]);
+			for (int j=0; j<atom.tuple.length; j++) {
+				vars.add((Integer) atom.tuple[j]);
 			}
 			
 			Item[] items = new Item[vars.size()];
@@ -274,14 +268,28 @@ public class DataStructure {
 	
 	public static int parseQuery(String[] cq) {
 		
-		SortedSet<String> freeVars;
-		String freeTuple;
+		Map<Integer, String> varToString = new HashMap<>();
+		Map<String, Integer> varToInt = new HashMap<>();
+		
+		String freeTupleString;
 		String[] freeVarsArray;
+		int[] freeTuple;
+		SortedSet<Integer> freeVars = new TreeSet<>();
 		
 		if (cq[0].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
-			freeTuple = cq[0].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
-			freeVarsArray = freeTuple.split(",");
-			freeVars = new TreeSet<>(Arrays.asList(freeVarsArray));
+			freeTupleString = cq[0].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
+			freeVarsArray = freeTupleString.split(",");
+			
+			freeTuple = new int[freeVarsArray.length];
+			
+			for (int i=0; i<freeVarsArray.length; i++) {
+				if (!varToInt.containsKey(freeVarsArray[i])) {
+					varToInt.put(freeVarsArray[i], varToInt.keySet().size());
+					varToString.put(varToInt.get(freeVarsArray[i]), freeVarsArray[i]);
+				}
+				freeTuple[i] = varToInt.get(freeVarsArray[i]);
+				freeVars.add(varToInt.get(freeVarsArray[i]));
+			}
 		} else {
 			System.err.println("Invalid query format");
 			return -1;
@@ -294,24 +302,33 @@ public class DataStructure {
 		
 		Atom[] atoms = new Atom[cq.length-2];
 		Set<String> relationSet = new HashSet<>();
-		Map<String,Set<String>> varsInRelations = new HashMap<>();
+		Map<Integer,Set<String>> varsInRelations = new HashMap<>();
 		
 		for (int i=2; i<cq.length; i++) {
 			if (cq[i].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
 				String relation = cq[i].substring(0,cq[0].indexOf('(')-1);
 				relationSet.add(relation);
 				
-				String tuple = cq[i].substring(cq[i].indexOf('(')+1,cq[i].length()-1);
-				String[] varsArray = tuple.split(",");
-				Set<String> vars = new HashSet<>(Arrays.asList(varsArray));
+				String tupleString = cq[i].substring(cq[i].indexOf('(')+1,cq[i].length()-1);
+				String[] varsArray = tupleString.split(",");
 				
-				atoms[i-2] = new Atom(relation, vars);
+				int[] atomTuple = new int[varsArray.length];
 				
-				for (String v : vars) {
-					if (!varsInRelations.containsKey(v)) {
-						varsInRelations.put(v, new HashSet<String>());
+				for (int j=0; j<varsArray.length; j++) {
+					if (!varToInt.containsKey(varsArray[j])) {
+						varToInt.put(varsArray[j], varToInt.keySet().size());
+						varToString.put(varToInt.get(varsArray[j]), varsArray[j]);
 					}
-					varsInRelations.get(v).add(relation);
+					atomTuple[j] = varToInt.get(varsArray[j]);
+				}
+				
+				atoms[i-2] = new Atom(relation, atomTuple);
+				
+				for (int j=0; j<atomTuple.length; j++) {
+					if (!varsInRelations.containsKey(atomTuple[j])) {
+						varsInRelations.put(atomTuple[j], new HashSet<String>());
+					}
+					varsInRelations.get(atomTuple[j]).add(relation);
 				}
 			} else {
 				System.err.println("Invalid query format");
@@ -321,37 +338,35 @@ public class DataStructure {
 		
 		String sql;
 		
-		if ((sql = convertCqToSql(freeVars, relationSet, varsInRelations)) != null) {
-			query = new Query(freeVars.size(), atoms, sql, freeVars);
+		if ((sql = convertCqToSql(freeTuple, relationSet, varsInRelations, varToString)) != null) {
+			query = new Query(freeVars.size(), atoms, sql, freeTuple, freeVars, varToString);
 			return 0;
 		} else {
 			return -1;
 		}
 	}
 	
-	public static String convertCqToSql(SortedSet<String> freeVars, Set<String> relations, Map<String,Set<String>> varsInRelations) {
+	public static String convertCqToSql(int[] freeTuple, Set<String> relations, Map<Integer,Set<String>> varsInRelations, Map<Integer, String> varToString) {
 		
 		StringBuilder builder = new StringBuilder().append("SELECT ");
 		
-		Iterator<String> itFree = freeVars.iterator();
-		
-		while (itFree.hasNext()) {
-			String v = itFree.next();
-			String r = varsInRelations.get(v).iterator().next();
-			builder.append(r + "." + v);
-			if (itFree.hasNext()) {
+		for (int i=0; i<freeTuple.length; i++) {
+			String r = varsInRelations.get(freeTuple[i]).iterator().next();
+			builder.append(r + "." + varToString.get(freeTuple[i]));
+			if (i<freeTuple.length-1) {
 				builder.append(", ");
 			}
 		}
 		
 		builder.append(" FROM ");
-		builder.append(String.join(", ", relations));
+		builder.append(String.join(", ", relations));								//does not support self joins
 		
 		boolean where = false;
-		Iterator<String> itKeySet = varsInRelations.keySet().iterator();
+		Iterator<Integer> itKeySet = varsInRelations.keySet().iterator();
 		
 		while (itKeySet.hasNext()) {
-			String v = itKeySet.next();
+			Integer v = itKeySet.next();
+			String varString = varToString.get(v);
 			Iterator<String> itRelations = varsInRelations.get(v).iterator();
 			String first = itRelations.next();
 			
@@ -362,7 +377,7 @@ public class DataStructure {
 					builder.append(" WHERE ");
 					where = true;
 				}
-				builder.append(first + "." + v + " = " + itRelations.next() + "." + v);
+				builder.append(first + "." + varString + " = " + itRelations.next() + "." + varString);
 			}
 			
 			if (!itKeySet.hasNext()) {
@@ -400,7 +415,7 @@ public class DataStructure {
 			System.out.println("Connection successful\n");
 			
 			Statement statement = conn.createStatement();
-			ResultSet result = statement.executeQuery(query.queryString);
+			ResultSet result = statement.executeQuery(query.sql);
 			
 			while (result.next()) {
 				System.out.println(result.getDouble(1) + " " + result.getDouble(2) + " " + result.getDouble(3) + " " + result.getDouble(4) + " " + result.getDouble(5));
