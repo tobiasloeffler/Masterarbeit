@@ -1,23 +1,23 @@
 package myPackage;
 
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
-public class QTree extends DataStructure {
+public class QTree {
 	QTreeNode root;
 	
-	public QTree() {
-		QTreeNode node3 = new QTreeNode(3, null);
-		QTreeNode node4 = new QTreeNode(4, null);
-		QTreeNode[] children2 = {node3};
-		QTreeNode node2 = new QTreeNode(2, children2);
-		QTreeNode[] children1 = {node2, node4};
-		QTreeNode node1 = new QTreeNode(1, children1);
-		QTreeNode[] children0 = {node1};
-		this.root = new QTreeNode(0, children0);
+	public QTree(QTreeNode root) {
+		
+		this.root = root;
 	}
 	
 	public QTreeNode[] getChildren(QTreeNode node, int var) {
+		
 		if (node.var == var) {
 			return node.children;
 		} else if (node.children != null){
@@ -32,6 +32,7 @@ public class QTree extends DataStructure {
 	}
 	
 	public int getChildrenCount(QTreeNode node, int var) {
+		
 		if (node.var == var) {
 			if (node.children != null) {
 				return node.children.length;
@@ -50,6 +51,7 @@ public class QTree extends DataStructure {
 	}
 	
 	public int[] getPath(QTreeNode node, Set<Integer> vars, int length) {
+		
 		if (vars.contains((Integer) node.var)) {
 			vars.remove((Integer) node.var);
 			if (vars.isEmpty()) {
@@ -58,7 +60,7 @@ public class QTree extends DataStructure {
 				return result;
 			} else if (node.children != null) {
 				for (int i=0; i<node.children.length; i++) {
-					int[] result = qTree.getPath(node.children[i], vars, length+1);
+					int[] result = this.getPath(node.children[i], vars, length+1);
 					if (result != null) {
 						result[length-1] = node.var;
 						return result;
@@ -70,13 +72,114 @@ public class QTree extends DataStructure {
 	}
 	
 	public boolean inRep(Atom atom, int var) {
+		
 		Set<Integer> vars = new HashSet<Integer>();
 		
 		for (int i=0; i<atom.tuple.length; i++) {
 			vars.add((Integer) atom.tuple[i]);
 		}
 		
-		int[] path = qTree.getPath(qTree.root, vars, 1);
+		int[] path = this.getPath(this.root, vars, 1);
 		return ((path != null) && (path[path.length-1] == var));
+	}
+	
+public static QTree generateQTree(Query q) {
+		
+		Set<Set<Integer>> varSets = new HashSet<>();
+		
+		for (int i=0; i<q.atoms.length; i++) {
+			Set<Integer> varSet = IntStream.of(q.atoms[i].tuple)
+					.boxed()
+					.collect(Collectors.toSet());
+			varSets.add(varSet);
+		}
+		
+		QTreeNode[] rootNodes = generateQTree(q, varSets);
+		
+		return new QTree(rootNodes[0]);
+	}
+	
+	public static QTreeNode[] generateQTree(Query q, Set<Set<Integer>> varSets) {
+		
+		List<Set<Set<Integer>>> connectedComponents = new LinkedList<>();
+		
+		outerloop:
+		for (Set<Integer> varSet : varSets) {
+			
+			Iterator<Set<Set<Integer>>> it = connectedComponents.iterator();
+			
+			while (it.hasNext()) {
+				
+				Set<Set<Integer>> component = (Set<Set<Integer>>) it.next();
+				
+				for (Set<Integer> atom : component) {
+					Set<Integer> intersection = new HashSet<>(varSet);
+					intersection.retainAll(atom);
+					
+					if (!intersection.isEmpty()) {
+						component.add(varSet);
+						continue outerloop;
+					}
+				}
+			}
+			
+			Set<Set<Integer>> newComponent = new HashSet<>();
+			newComponent.add(varSet);
+			connectedComponents.add(newComponent);
+		}
+		
+		QTreeNode[] result = new QTreeNode[connectedComponents.size()];
+		int count = 0;
+		
+		for (Set<Set<Integer>> component : connectedComponents) {
+			int rootVar = getRootVar(q, component);
+			
+			for (Iterator<Set<Integer>> it = component.iterator(); it.hasNext();) {
+				
+				Set<Integer> atom = it.next();
+				
+				if (atom.size() > 1) {
+					atom.remove(rootVar);
+				} else {
+					it.remove();
+				}
+			}
+			
+			QTreeNode[] children = generateQTree(q, component);
+			result[count] = new QTreeNode(rootVar, children);
+			count++;
+		}
+		
+		return result;
+	}
+	
+	public static int getRootVar(Query q, Set<Set<Integer>> component) {
+		
+		Set<Integer> commonVars = intersectAll(component);
+		
+		Set<Integer> freeCommonVars = new HashSet<>(commonVars);
+		freeCommonVars.retainAll(q.freeVars);
+		
+		int v;
+		
+		if (!freeCommonVars.isEmpty()) {
+			v = freeCommonVars.iterator().next();
+		} else {
+			v = commonVars.iterator().next();
+		}
+		
+		return v;
+	}
+	
+	public static Set<Integer> intersectAll(Set<Set<Integer>> component) {
+		
+		Iterator<Set<Integer>> it = component.iterator();
+		Set<Integer> first = new HashSet<>(it.next());
+		
+		while (it.hasNext()) {
+			first.retainAll(it.next());
+		}
+		
+		return first;
 	}
 }

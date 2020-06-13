@@ -1,11 +1,21 @@
 package myPackage;
 
-import java.util.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.ResultSet;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class DataStructure {
 	
@@ -266,139 +276,17 @@ public class DataStructure {
 		}
 	}
 	
-	public static int parseQuery(String[] cq) {
-		
-		Map<Integer, String> varToString = new HashMap<>();
-		Map<String, Integer> varToInt = new HashMap<>();
-		
-		String freeTupleString;
-		String[] freeVarsArray;
-		int[] freeTuple;
-		SortedSet<Integer> freeVars = new TreeSet<>();
-		
-		if (cq[0].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
-			freeTupleString = cq[0].substring(cq[0].indexOf('(')+1,cq[0].length()-1);
-			freeVarsArray = freeTupleString.split(",");
-			
-			freeTuple = new int[freeVarsArray.length];
-			
-			for (int i=0; i<freeVarsArray.length; i++) {
-				if (!varToInt.containsKey(freeVarsArray[i])) {
-					varToInt.put(freeVarsArray[i], varToInt.keySet().size());
-					varToString.put(varToInt.get(freeVarsArray[i]), freeVarsArray[i]);
-				}
-				freeTuple[i] = varToInt.get(freeVarsArray[i]);
-				freeVars.add(varToInt.get(freeVarsArray[i]));
-			}
-		} else {
-			System.err.println("Invalid query format");
-			return -1;
-		}
-		
-		if (!cq[1].equals("=")) {
-			System.err.println("Invalid query format");
-			return -1;
-		}
-		
-		Atom[] atoms = new Atom[cq.length-2];
-		Set<String> relationSet = new HashSet<>();
-		Map<Integer,Set<String>> varsInRelations = new HashMap<>();
-		
-		for (int i=2; i<cq.length; i++) {
-			if (cq[i].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
-				String relation = cq[i].substring(0,cq[0].indexOf('(')-1);
-				relationSet.add(relation);
-				
-				String tupleString = cq[i].substring(cq[i].indexOf('(')+1,cq[i].length()-1);
-				String[] varsArray = tupleString.split(",");
-				
-				int[] atomTuple = new int[varsArray.length];
-				
-				for (int j=0; j<varsArray.length; j++) {
-					if (!varToInt.containsKey(varsArray[j])) {
-						varToInt.put(varsArray[j], varToInt.keySet().size());
-						varToString.put(varToInt.get(varsArray[j]), varsArray[j]);
-					}
-					atomTuple[j] = varToInt.get(varsArray[j]);
-				}
-				
-				atoms[i-2] = new Atom(relation, atomTuple);
-				
-				for (int j=0; j<atomTuple.length; j++) {
-					if (!varsInRelations.containsKey(atomTuple[j])) {
-						varsInRelations.put(atomTuple[j], new HashSet<String>());
-					}
-					varsInRelations.get(atomTuple[j]).add(relation);
-				}
-			} else {
-				System.err.println("Invalid query format");
-				return -1;
-			}
-		}
-		
-		String sql;
-		
-		if ((sql = convertCqToSql(freeTuple, relationSet, varsInRelations, varToString)) != null) {
-			query = new Query(freeVars.size(), atoms, sql, freeTuple, freeVars, varToString);
-			return 0;
-		} else {
-			return -1;
-		}
-	}
-	
-	public static String convertCqToSql(int[] freeTuple, Set<String> relations, Map<Integer,Set<String>> varsInRelations, Map<Integer, String> varToString) {
-		
-		StringBuilder builder = new StringBuilder().append("SELECT ");
-		
-		for (int i=0; i<freeTuple.length; i++) {
-			String r = varsInRelations.get(freeTuple[i]).iterator().next();
-			builder.append(r + "." + varToString.get(freeTuple[i]));
-			if (i<freeTuple.length-1) {
-				builder.append(", ");
-			}
-		}
-		
-		builder.append(" FROM ");
-		builder.append(String.join(", ", relations));								//does not support self joins
-		
-		boolean where = false;
-		Iterator<Integer> itKeySet = varsInRelations.keySet().iterator();
-		
-		while (itKeySet.hasNext()) {
-			Integer v = itKeySet.next();
-			String varString = varToString.get(v);
-			Iterator<String> itRelations = varsInRelations.get(v).iterator();
-			String first = itRelations.next();
-			
-			while (itRelations.hasNext()) {
-				if (where) {
-					builder.append(" AND ");
-				} else {
-					builder.append(" WHERE ");
-					where = true;
-				}
-				builder.append(first + "." + varString + " = " + itRelations.next() + "." + varString);
-			}
-			
-			if (!itKeySet.hasNext()) {
-				builder.append(";");
-			}
-		}
-		
-		return builder.toString();
-	}
-	
-	public static void generateQTree() {
-		
-	}
-	
 	public static void main(String[] args) {
 		
-		if (parseQuery(args) == -1) {
-			System.exit(1);
-		}
+		query = Query.parseQuery(args);
 		
-		qTree = new QTree();
+		qTree = QTree.generateQTree(query);
+		
+		System.exit(0);
+		
+		
+		
+		
 		startList = new MyList(qTree.root.var);
 		itemStorage = (HashMap<String,Item>[]) new HashMap[query.mFree];
 		
