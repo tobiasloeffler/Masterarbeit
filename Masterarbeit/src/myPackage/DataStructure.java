@@ -1,5 +1,8 @@
 package myPackage;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -7,15 +10,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class DataStructure {
 	
@@ -278,14 +275,22 @@ public class DataStructure {
 	
 	public static void main(String[] args) {
 		
+		Properties properties = new Properties();
+		
+		try (FileInputStream inputStream = new FileInputStream("config.properties")) {
+			properties.load(inputStream);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		String url = properties.getProperty("url");
+		String user = properties.getProperty("user");
+		String password = properties.getProperty("password");
+		
 		query = Query.parseQuery(args);
-		
 		qTree = QTree.generateQTree(query);
-		
-		System.exit(0);
-		
-		
-		
 		
 		startList = new MyList(qTree.root.var);
 		itemStorage = (HashMap<String,Item>[]) new HashMap[query.mFree];
@@ -294,9 +299,7 @@ public class DataStructure {
 			itemStorage[i] = new HashMap<String, Item>();
 		}
 		
-		String url = "jdbc:postgresql://localhost/masterarbeit";
-		String user = "tobi";
-		String password = "password";
+		System.exit(0);
 		
 		try (Connection conn = DriverManager.getConnection(url, user, password)) {
 			
