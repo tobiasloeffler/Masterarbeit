@@ -50,17 +50,35 @@ public class QTree {
 		return -1;
 	}
 	
+	public int[] getPath(Atom atom) {
+		
+		Set<Integer> vars = new HashSet<>();
+		
+		for (int j=0; j<atom.tuple.length; j++) {
+			vars.add((Integer) atom.tuple[j]);
+		}
+		
+		return this.getPath(this.root, vars, 1);
+	}
+	
 	public int[] getPath(QTreeNode node, Set<Integer> vars, int length) {
 		
 		if (vars.contains((Integer) node.var)) {
+			
 			vars.remove((Integer) node.var);
+			
 			if (vars.isEmpty()) {
+				
 				int[] result = new int[length];
 				result[length-1] = node.var;
 				return result;
+				
 			} else if (node.children != null) {
+				
 				for (int i=0; i<node.children.length; i++) {
+					
 					int[] result = this.getPath(node.children[i], vars, length+1);
+					
 					if (result != null) {
 						result[length-1] = node.var;
 						return result;

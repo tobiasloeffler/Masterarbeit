@@ -8,4 +8,15 @@ public class Atom {
 		this.relation = relation;
 		this.tuple = tuple;
 	}
+	
+	public int firstIndexOf(int var) {
+		
+		for (int i=0; i<this.tuple.length; i++) {
+			if (tuple[i] == var) {
+				return i;
+			}
+		}
+		
+		return -1;
+	}
 }

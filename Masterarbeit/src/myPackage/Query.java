@@ -36,7 +36,7 @@ public class Query {
 		return this.varToString.get(var);
 	}
 	
-public static Query parseQuery(String[] cq) {
+	public static Query parseQuery(String[] cq) {
 		
 		Map<Integer, String> varToString = new HashMap<>();
 		Map<String, Integer> varToInt = new HashMap<>();
@@ -76,7 +76,7 @@ public static Query parseQuery(String[] cq) {
 		
 		for (int i=2; i<cq.length; i++) {
 			if (cq[i].matches("[a-zA-Z]\\w*[(]([a-zA-Z]\\w*((,[a-zA-Z]\\w*)?)*)?[)]")) {
-				String relation = cq[i].substring(0,cq[0].indexOf('(')-1);
+				String relation = cq[i].substring(0,cq[i].indexOf('('));
 				relationSet.add(relation);
 				
 				String tupleString = cq[i].substring(cq[i].indexOf('(')+1,cq[i].length()-1);
