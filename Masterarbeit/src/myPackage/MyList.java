@@ -1,35 +1,48 @@
 package myPackage;
 
-public class MyList extends DataStructure {
+import static myPackage.DataStructure.query;
+
+public class MyList {
 	int var;
 	int weight;
-	double[][] matrix;
+	Matrix matrix;
 	Item first;
 	Item last;
 	
 	int weightFree;
-	double[][] matrixFree;
+	Matrix matrixFree;
 	
 	public MyList(int var) {
 		this.var = var;
 		this.weight = 0;
-		this.matrix = new double[query.mFree][query.mFree];
+		this.matrix = new Matrix(query.m);
 		this.first = null;
 		this.last = null;
 		
 		this.weightFree = 0;
-		this.matrixFree = new double[query.mFree-1][query.mFree-1];
+		this.matrixFree = new Matrix(query.mFree);
 		
-		for (int i=0; i<query.mFree; i++) {
-			for (int j=0; j<query.mFree; j++) {
-				this.matrix[i][j] = 0.0;
-			}
-		}
+		this.matrix.set(0.0);
+		this.matrixFree.set(0.0);
+	}
+	
+	public void updateWeightAndMatrix(Item item, int weight_old, Matrix matrix_old) {
 		
-		for (int i=0; i<(query.mFree-1); i++) {
-			for (int j=0; j<(query.mFree-1); j++) {
-				this.matrixFree[i][j] = 0.0;
-			}
+		this.weight -= weight_old;
+		this.weight += item.weight;
+		
+		this.matrix.subtract(matrix_old);
+		this.matrix.add(item.matrix);
+	}
+	
+	public void updateWeightFreeAndMatrixFree(Item item, int weightFree_old, Matrix matrixFree_old) {
+		
+		if (query.isFree(item.var)) {
+			this.weightFree -= weightFree_old;
+			this.weightFree += item.weightFree;
+			
+			this.matrixFree.subtract(matrixFree_old);
+			this.matrixFree.add(item.matrixFree);
 		}
 	}
 }

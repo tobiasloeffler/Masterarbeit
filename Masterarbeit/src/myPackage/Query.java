@@ -10,14 +10,16 @@ import java.util.TreeSet;
 
 public class Query {
 	int mFree;
+	int m;
 	Atom[] atoms;
 	String sql;
 	int[] freeTuple;
 	SortedSet<Integer> freeVars;
 	private Map<Integer, String> varToString;
 	
-	public Query(int mFree, Atom[] atoms, String sql, int[] freeTuple, SortedSet<Integer> freeVars, Map<Integer, String> varToString) {
+	public Query(int mFree, int m, Atom[] atoms, String sql, int[] freeTuple, SortedSet<Integer> freeVars, Map<Integer, String> varToString) {
 		this.mFree = mFree;
+		this.m = m;
 		this.atoms = atoms;
 		this.sql = sql;
 		this.freeTuple = freeTuple;
@@ -109,7 +111,7 @@ public class Query {
 		String sql;
 		
 		if ((sql = convertCqToSql(freeTuple, relationSet, varsInRelations, varToString)) != null) {
-			return new Query(freeVars.size(), atoms, sql, freeTuple, freeVars, varToString);
+			return new Query(freeVars.size(), varToString.keySet().size(), atoms, sql, freeTuple, freeVars, varToString);
 		} else {
 			return null;
 		}

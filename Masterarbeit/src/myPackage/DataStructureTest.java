@@ -28,19 +28,19 @@ class DataStructureTest {
 
 	@Test
 	void testCopyMatrix() {
-		double[][] testMatrix = new double[20][20];
+		Matrix testMatrix = new Matrix(20);
 		
 		for (int i=0; i<20; i++ ) {
 			for (int j=0; j<20; j++) {
-				testMatrix[i][j] = Math.random();
+				testMatrix.data[i][j] = Math.random();
 			}
 		}
 		
-		double[][] resultMatrix = DataStructure.copyMatrix(testMatrix);
+		Matrix resultMatrix = Matrix.copy(testMatrix);
 		
 		for (int i=0; i<20; i++ ) {
 			for (int j=0; j<20; j++) {
-				assertEquals(testMatrix[i][j], resultMatrix[i][j], "All matrix values should be correct");
+				assertEquals(testMatrix.data[i][j], resultMatrix.data[i][j], "All matrix values should be correct");
 			}
 		}
 	}
