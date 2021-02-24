@@ -8,4 +8,4 @@ public class QTreeNode {
 		this.var = var;
 		this.children = children;
 	}
-}
+} // test
